@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Table } from '@finos/perspective';
+import { Table, TableData } from '@finos/perspective';
 import { ServerRespond } from './DataStreamer';
 import { DataManipulator } from './DataManipulator';
 import './Graph.css';
@@ -23,10 +23,13 @@ class Graph extends Component<IProps, {}> {
     const elem = document.getElementsByTagName('perspective-viewer')[0] as unknown as PerspectiveViewerElement;
 
     const schema = {
-      stock: 'string',
-      top_ask_price: 'float',
-      top_bid_price: 'float',
+      price_stock1: 'float',
+      price_stock2: 'float',
+      ratio: 'float',
+      upper_bound: 'float',
+      lower_bound: 'float',
       timestamp: 'date',
+      trigger_alert: 'float',
     };
 
     if (window.perspective && window.perspective.worker()) {
@@ -35,24 +38,35 @@ class Graph extends Component<IProps, {}> {
     if (this.table) {
       // Load the `table` in the `<perspective-viewer>` DOM reference.
       elem.load(this.table);
-      elem.setAttribute('view', 'y_line');
-      elem.setAttribute('column-pivots', '["stock"]');
-      elem.setAttribute('row-pivots', '["timestamp"]');
-      elem.setAttribute('columns', '["top_ask_price"]');
-      elem.setAttribute('aggregates', JSON.stringify({
-        stock: 'distinctcount',
-        top_ask_price: 'avg',
-        top_bid_price: 'avg',
-        timestamp: 'distinct count',
-      }));
+
+      // create attributes object containing all configurations for graph
+      // the attribute values are derived from schema object
+      const attributes = {
+        "view": 'y_line',
+        "row-pivots": '["timestamp"]',
+        "columns": '["ratio", "lower_bound", "upper_bound", "trigger_alert"]',
+        "aggregates": JSON.stringify({
+          price_stock1: 'avg',
+          price_stock2: 'avg',
+          ratio: 'avg',
+          upper_bound: 'avg',
+          lower_bound: 'avg',
+          timestamp: 'distinct count',
+          trigger_alert: 'avg',
+        })
+      }
+      Object.entries(attributes).forEach((entry)=> {
+        let [prop, val] = entry
+        elem.setAttribute(prop, val)
+      })
     }
   }
 
   componentDidUpdate() {
     if (this.table) {
-      this.table.update(
+      this.table.update([
         DataManipulator.generateRow(this.props.data),
-      );
+      ] as unknown as TableData);
     }
   }
 }
